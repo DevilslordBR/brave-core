@@ -36,6 +36,8 @@ class DatabaseContributionQueue: public DatabaseTable {
 
   bool MigrateToV15(ledger::DBTransaction* transaction);
 
+  bool MigrateToV21(ledger::DBTransaction* transaction);
+
   void OnInsertOrUpdate(
       ledger::DBCommandResponsePtr response,
       const std::string& queue_string,

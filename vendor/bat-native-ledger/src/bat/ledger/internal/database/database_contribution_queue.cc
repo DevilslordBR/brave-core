@@ -64,6 +64,9 @@ bool DatabaseContributionQueue::Migrate(
     case 15: {
       return MigrateToV15(transaction);
     }
+    case 21: {
+      return MigrateToV21(transaction);
+    }
     default: {
       return true;
     }
@@ -94,6 +97,13 @@ bool DatabaseContributionQueue::MigrateToV15(
   DCHECK(transaction);
 
   return publishers_->Migrate(transaction, 15);
+}
+
+bool DatabaseContributionQueue::MigrateToV21(
+    ledger::DBTransaction* transaction) {
+  DCHECK(transaction);
+
+  return publishers_->Migrate(transaction, 21);
 }
 
 void DatabaseContributionQueue::InsertOrUpdate(
