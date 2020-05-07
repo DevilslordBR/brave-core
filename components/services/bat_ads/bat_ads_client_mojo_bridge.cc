@@ -39,45 +39,6 @@ ads::Result ToAdsResult(
   return (ads::Result)result;
 }
 
-class LogStreamImpl
-    : public ads::LogStream {
- public:
-  LogStreamImpl(
-      const char* file,
-      const int line,
-      const ads::LogLevel log_level) {
-    switch (log_level) {
-      case ads::LogLevel::LOG_INFO: {
-        log_message_ = std::make_unique<logging::LogMessage>(
-            file, line, logging::LOG_INFO);
-        break;
-      }
-
-      case ads::LogLevel::LOG_WARNING: {
-        log_message_ = std::make_unique<logging::LogMessage>(
-            file, line, logging::LOG_WARNING);
-        break;
-      }
-
-      default: {
-        log_message_ = std::make_unique<logging::LogMessage>(
-            file, line, logging::LOG_ERROR);
-        break;
-      }
-    }
-  }
-
-  LogStreamImpl(const LogStreamImpl&) = delete;
-  LogStreamImpl& operator=(const LogStreamImpl&) = delete;
-
-  std::ostream& stream() override {
-    return log_message_->stream();
-  }
-
- private:
-  std::unique_ptr<logging::LogMessage> log_message_;
-};
-
 }  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -449,20 +410,28 @@ void BatAdsClientMojoBridge::GetAdConversions(
       base::BindOnce(&OnGetAdConversions, std::move(callback)));
 }
 
-void BatAdsClientMojoBridge::EventLog(
-    const std::string& json) const {
+void BatAdsClientMojoBridge::Log(
+    const char* file,
+    const int line,
+    const ads::LogSeverity severity,
+    const std::string& message) const {
   if (!connected()) {
     return;
   }
 
-  bat_ads_client_->EventLog(json);
+  bat_ads_client_->Log(file, line, severity, message);
 }
 
-std::unique_ptr<ads::LogStream> BatAdsClientMojoBridge::Log(
+void BatAdsClientMojoBridge::VerboseLog(
     const char* file,
     const int line,
-    const ads::LogLevel log_level) const {
-  return std::make_unique<LogStreamImpl>(file, line, log_level);
+    const int verbose_level,
+    const std::string& message) const {
+  if (!connected()) {
+    return;
+  }
+
+  bat_ads_client_->VerboseLog(file, line, verbose_level, message);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

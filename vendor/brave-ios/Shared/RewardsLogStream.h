@@ -18,7 +18,7 @@ public:
   RewardsLogStream(const char* file, const int line, const ledger::LogLevel log_level);
     
   /// Creates a stream for logging ads information
-  RewardsLogStream(const char* file, const int line, const ads::LogLevel log_level);
+  RewardsLogStream(const char* file, const int line, const ads::LogSeverity log_level);
     
   /// Flushes logs immediately upon destruction
   ~RewardsLogStream() override;

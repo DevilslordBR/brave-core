@@ -26,10 +26,10 @@
 
 namespace ads {
 
-enum LogLevel {
-  LOG_ERROR = 1,
+enum LogSeverity {
+  LOG_INFO = 0,
   LOG_WARNING,
-  LOG_INFO
+  LOG_ERROR
 };
 
 enum URLRequestMethod {
@@ -227,15 +227,19 @@ class ADS_EXPORT AdsClient {
   virtual void GetAdConversions(
       GetAdConversionsCallback callback) = 0;
 
-  // Should log an event
-  virtual void EventLog(
-      const std::string& json) const = 0;
-
-  // Should log diagnostic information
-  virtual std::unique_ptr<LogStream> Log(
+  // Logging
+  virtual void Log(
       const char* file,
       const int line,
-      const LogLevel log_level) const = 0;
+      const LogSeverity severity,
+      const std::string& message) const = 0;
+
+  // Verbose level logging
+  virtual void VerboseLog(
+      const char* file,
+      const int line,
+      const int verbose_level,
+      const std::string& message) const = 0;
 };
 
 }  // namespace ads

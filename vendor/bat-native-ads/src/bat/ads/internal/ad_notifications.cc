@@ -304,7 +304,7 @@ void AdNotifications::SaveState() {
     return;
   }
 
-  BLOG(INFO) << "Saving notifications state";
+  VLOG(4, "Saving ad notifications state");
 
   std::string json = ToJson();
   auto callback = std::bind(&AdNotifications::OnStateSaved, this, _1);
@@ -314,11 +314,11 @@ void AdNotifications::SaveState() {
 void AdNotifications::OnStateSaved(
     const Result result) {
   if (result != SUCCESS) {
-    BLOG(ERROR) << "Failed to save notifications state";
+    LOG(ERROR, "Failed to save ad notifications state");
     return;
   }
 
-  BLOG(INFO) << "Successfully saved notifications state";
+  VLOG(4, "Successfully saved ad notifications state");
 }
 
 void AdNotifications::LoadState() {
@@ -332,20 +332,21 @@ void AdNotifications::OnStateLoaded(
   is_initialized_ = true;
 
   if (result != SUCCESS) {
-    BLOG(ERROR)
-        << "Failed to load notifications state, resetting to default values";
+    VLOG(1, "Initializing ad notifications state");
 
     ad_notifications_.clear();
     SaveState();
   } else {
     if (!FromJson(json)) {
-      BLOG(ERROR) << "Failed to parse notifications state: " << json;
+      LOG(ERROR, "Failed to load ad notifications state");
+
+      VLOG(9, "Failed to parse ad notifications state:\n" << json);
 
       callback_(FAILED);
       return;
     }
 
-    BLOG(INFO) << "Successfully loaded notifications state";
+    VLOG(3, "Successfully loaded ad notifications state");
   }
 
   callback_(SUCCESS);
@@ -364,7 +365,6 @@ bool AdNotifications::FromJson(
   }
 
   if (!GetNotificationsFromJson(dictionary)) {
-    BLOG(WARNING) << "Failed to get notifications from JSON: " << json;
     return false;
   }
 
