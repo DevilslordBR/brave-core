@@ -35,7 +35,7 @@ void AdsServe::DownloadCatalog() {
     return;
   }
 
-  BLOG(INFO) << "Download catalog";
+  VLOG(2, "Download catalog");
 
   auto callback = std::bind(&AdsServe::OnCatalogDownloaded,
       this, url_, _1, _2, _3);
@@ -50,7 +50,7 @@ void AdsServe::DownloadCatalogAfterDelay() {
   const base::Time time = timer_.StartWithPrivacy(delay,
       base::BindOnce(&AdsServe::DownloadCatalog, base::Unretained(this)));
 
-  BLOG(INFO) << "Download catalog " << FriendlyDateAndTime(time);
+  VLOG(2, "Download catalog " << FriendlyDateAndTime(time));
 }
 
 uint64_t AdsServe::CatalogLastUpdated() const {
@@ -96,14 +96,14 @@ void AdsServe::OnCatalogDownloaded(
 
   if (response_status_code / 100 == 2) {
     if (!response.empty()) {
-      BLOG(INFO) << "Successfully downloaded catalog";
+      VLOG(2, "Successfully downloaded catalog");
     }
 
     if (!ProcessCatalog(response)) {
       should_retry = true;
     }
   } else if (response_status_code == 304) {
-    BLOG(INFO) << "Catalog is up to date";
+    VLOG(2, "Catalog is up to date");
   } else {
     std::string formatted_headers = "";
     for (auto header = headers.begin(); header != headers.end(); ++header) {
@@ -113,11 +113,11 @@ void AdsServe::OnCatalogDownloaded(
       }
     }
 
-    BLOG(ERROR) << "Failed to download catalog from:"
-        << std::endl << "  url: " << url
-        << std::endl << "  response_status_code: " << response_status_code
-        << std::endl << "  response: " << response
-        << std::endl << "  headers: " << formatted_headers;
+    VLOG(1, "Failed to download catalog:\n"
+        << "  url: " << url << "\n"
+        << "  response status code: " << response_status_code << "\n"
+        << "  response: " << response << "\n"
+        << "  headers: " << formatted_headers);
 
     should_retry = true;
   }
@@ -135,27 +135,28 @@ void AdsServe::OnCatalogDownloaded(
 bool AdsServe::ProcessCatalog(const std::string& json) {
   // TODO(Terry Mancey): Refactor function to use callbacks
 
+  VLOG(2, "Parsing catalog");
+
   Catalog catalog(ads_client_);
-
-  BLOG(INFO) << "Parsing catalog";
-
   if (!catalog.FromJson(json)) {
+    LOG(ERROR, "Failed to load catalog state");
+
+    VLOG(9, "Failed to parse catalog state:\n" << json);
+
     return false;
   }
 
-  BLOG(INFO) << "Catalog parsed";
-
   if (!catalog.HasChanged(bundle_->GetCatalogId())) {
-    BLOG(WARNING) << "Catalog id " << catalog.GetId() <<
-        " matches current catalog id " << bundle_->GetCatalogId();
+    VLOG(2, "Catalog id " << catalog.GetId() << " matches current catalog id "
+        << bundle_->GetCatalogId());
 
     return true;
   }
 
-  BLOG(INFO) << "Generating bundle";
+  VLOG(2, "Generating bundle");
 
   if (!bundle_->UpdateFromCatalog(catalog)) {
-    BLOG(ERROR) << "Failed to generate bundle";
+    LOG(ERROR, "Failed to generate bundle state");
 
     return false;
   }
@@ -174,12 +175,12 @@ void AdsServe::OnCatalogSaved(const Result result) {
     // If the catalog fails to save, we will retry the next time we download the
     // catalog
 
-    BLOG(ERROR) << "Failed to save catalog";
+    LOG(ERROR, "Failed to save catalog state");
 
     return;
   }
 
-  BLOG(INFO) << "Successfully saved catalog";
+  VLOG(5, "Successfully saved catalog state");
 }
 
 void AdsServe::RetryDownloadingCatalog() {
@@ -187,11 +188,11 @@ void AdsServe::RetryDownloadingCatalog() {
       kRetryDownloadingCatalogAfterSeconds,
           base::BindOnce(&AdsServe::DownloadCatalog, base::Unretained(this)));
 
-  BLOG(INFO) << "Retry downloading catalog " << FriendlyDateAndTime(time);
+  VLOG(2, "Retry downloading catalog " << FriendlyDateAndTime(time));
 }
 
 void AdsServe::ResetCatalog() {
-  BLOG(INFO) << "Resetting catalog to default state";
+  VLOG(5, "Resetting catalog to default state");
 
   Catalog catalog(ads_client_);
   auto callback = std::bind(&AdsServe::OnCatalogReset, this, _1);
@@ -200,12 +201,12 @@ void AdsServe::ResetCatalog() {
 
 void AdsServe::OnCatalogReset(const Result result) {
   if (result != SUCCESS) {
-    BLOG(ERROR) << "Failed to reset catalog";
+    LOG(ERROR, "Failed to reset catalog state");
 
     return;
   }
 
-  BLOG(INFO) << "Successfully reset catalog";
+  VLOG(5, "Successfully reset catalog state");
 }
 
 }  // namespace ads

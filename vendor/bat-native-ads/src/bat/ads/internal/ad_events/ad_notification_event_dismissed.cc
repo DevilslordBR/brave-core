@@ -29,7 +29,8 @@ void AdNotificationEventDismissed::Trigger(
   Reports reports(ads_);
   const std::string report = reports.GenerateAdNotificationEventReport(info,
       AdNotificationEventType::kDismissed);
-  ads_->get_ads_client()->EventLog(report);
+  ads_->get_ads_client()->Log(__FILE__, __LINE__, LogSeverity::LOG_INFO,
+      report);
 
   ads_->ConfirmAd(info, ConfirmationType::kDismissed);
 

@@ -119,10 +119,10 @@ void NativeAdsClient::GetAdConversions(ads::GetAdConversionsCallback callback) {
   [bridge_ getAdConversions:callback];
 }
 
-void NativeAdsClient::EventLog(const std::string & json) const {
-  [bridge_ eventLog:json];
+void NativeAdsClient::Log(const char * file, const int line, const ads::LogSeverity severity, const std::string & message) const {
+  return [bridge_ log:file line:line severity:severity message:message];
 }
 
-std::unique_ptr<ads::LogStream> NativeAdsClient::Log(const char * file, const int line, const ads::LogLevel log_level) const {
-  return [bridge_ log:file line:line logLevel:log_level];
+void NativeAdsClient::VerboseLog(const char * file, const int line, const int verbose_level, const std::string & message) const {
+  return [bridge_ verboseLog:file line:line verboseLevel:verbose_level message:message];
 }

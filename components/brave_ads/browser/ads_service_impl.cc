@@ -86,44 +86,6 @@ const unsigned int kRetriesCountOnNetworkChange = 1;
 
 }  // namespace
 
-class LogStreamImpl : public ads::LogStream {
- public:
-  LogStreamImpl(
-      const char* file,
-      const int line,
-      const ads::LogLevel log_level) {
-    switch (log_level) {
-      case ads::LogLevel::LOG_INFO: {
-        log_message_ = std::make_unique<logging::LogMessage>(
-            file, line, logging::LOG_INFO);
-        break;
-      }
-
-      case ads::LogLevel::LOG_WARNING: {
-        log_message_ = std::make_unique<logging::LogMessage>(
-            file, line, logging::LOG_WARNING);
-        break;
-      }
-
-      default: {
-        log_message_ = std::make_unique<logging::LogMessage>(
-            file, line, logging::LOG_ERROR);
-        break;
-      }
-    }
-  }
-
-  LogStreamImpl(const LogStreamImpl&) = delete;
-  LogStreamImpl& operator=(const LogStreamImpl&) = delete;
-
-  std::ostream& stream() override {
-    return log_message_->stream();
-  }
-
- private:
-  std::unique_ptr<logging::LogMessage> log_message_;
-};
-
 namespace {
 
 static std::map<std::string, int> g_schema_resource_ids = {
@@ -2092,16 +2054,49 @@ void AdsServiceImpl::GetAdConversions(
           std::move(callback)));
 }
 
-void AdsServiceImpl::EventLog(
-    const std::string& json) const {
-  VLOG(0) << "AdsService Event Log: " << json;
-}
-
-std::unique_ptr<ads::LogStream> AdsServiceImpl::Log(
+void AdsServiceImpl::Log(
     const char* file,
     const int line,
-    const ads::LogLevel log_level) const {
-  return std::make_unique<LogStreamImpl>(file, line, log_level);
+    const ads::LogSeverity severity,
+    const std::string& message) const {
+  bool should_log;
+
+  ::logging::LogSeverity log_severity;
+
+  switch (severity) {
+    case ads::LogSeverity::LOG_INFO: {
+      should_log = LOG_IS_ON(INFO);
+      log_severity = ::logging::LOG_INFO;
+      break;
+    }
+
+    case ads::LogSeverity::LOG_WARNING: {
+      should_log = LOG_IS_ON(WARNING);
+      log_severity = ::logging::LOG_WARNING;
+      break;
+    }
+
+    case ads::LogSeverity::LOG_ERROR: {
+      should_log = LOG_IS_ON(ERROR);
+      log_severity = ::logging::LOG_ERROR;
+      break;
+    }
+  }
+
+  if (should_log) {
+    ::logging::LogMessage(file, line, log_severity).stream() << message;
+  }
+}
+
+void AdsServiceImpl::VerboseLog(
+    const char* file,
+    const int line,
+    const int verbose_level,
+    const std::string& message) const {
+  const int vlog_level = ::logging::GetVlogLevelHelper(file, sizeof(file));
+  if (verbose_level <= vlog_level) {
+    ::logging::LogMessage(file, line, -verbose_level).stream() << message;
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

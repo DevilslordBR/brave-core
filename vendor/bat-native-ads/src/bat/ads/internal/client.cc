@@ -390,7 +390,7 @@ std::map<std::string, uint64_t> Client::GetSeenAdNotifications() {
 
 void Client::ResetSeenAdNotifications(
     const CreativeAdNotificationList& ads) {
-  BLOG(INFO) << "Resetting seen ad notifications";
+  VLOG(2, "Resetting seen ad notifications");
 
   for (const auto& ad : ads) {
     auto seen_ad_notification =
@@ -417,7 +417,7 @@ std::map<std::string, uint64_t> Client::GetSeenAdvertisers() {
 
 void Client::ResetSeenAdvertisers(
      const CreativeAdNotificationList& ads) {
-  BLOG(INFO) << "Resetting seen advertisers";
+  VLOG(2, "Resetting seen advertisers");
 
   for (const auto& ad : ads) {
     auto seen_advertiser =
@@ -552,7 +552,7 @@ std::map<std::string, std::deque<uint64_t>> Client::GetCampaignHistory() const {
 }
 
 void Client::RemoveAllHistory() {
-  BLOG(INFO) << "Removed all client state history";
+  VLOG(2, "Removed all client state history");
 
   client_state_.reset(new ClientState());
 
@@ -585,12 +585,12 @@ void Client::SaveState() {
 void Client::OnStateSaved(
     const Result result) {
   if (result != SUCCESS) {
-    BLOG(ERROR) << "Failed to save client state";
+    LOG(ERROR, "Failed to save client state");
 
     return;
   }
 
-  BLOG(INFO) << "Successfully saved client state";
+  VLOG(5, "Successfully saved client state");
 }
 
 void Client::LoadState() {
@@ -604,18 +604,19 @@ void Client::OnStateLoaded(
   is_initialized_ = true;
 
   if (result != SUCCESS) {
-    BLOG(ERROR) << "Failed to load client state, resetting to default values";
-
     client_state_.reset(new ClientState());
     SaveState();
   } else {
     if (!FromJson(json)) {
-      BLOG(ERROR) << "Failed to parse client state: " << json;
+      LOG(ERROR, "Failed to load client state");
+
+      VLOG(9, "Failed to parse client state:\n" << json);
+
       callback_(FAILED);
       return;
     }
 
-    BLOG(INFO) << "Successfully loaded client state";
+    VLOG(4, "Successfully loaded client state");
   }
 
   callback_(SUCCESS);
@@ -627,14 +628,10 @@ bool Client::FromJson(
   std::string error_description;
   auto result = LoadFromJson(&state, json, &error_description);
   if (result != SUCCESS) {
-    BLOG(ERROR) << "Failed to parse client JSON (" << error_description <<
-        "): " << json;
-
     return false;
   }
 
   client_state_.reset(new ClientState(state));
-
   SaveState();
 
   return true;

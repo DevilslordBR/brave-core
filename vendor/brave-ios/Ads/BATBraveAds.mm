@@ -551,14 +551,14 @@ BATClassAdsBridge(BOOL, isDebug, setDebug, _is_debug)
 
 #pragma mark - Logging
 
-- (void)eventLog:(const std::string &)json
+- (void)log:(const char *)file line:(const int)line severity:(const ads::LogSeverity)severity message:(const std::string &) message
 {
-  [self log:__FILE__ line:__LINE__ logLevel:ads::LogLevel::LOG_INFO]->stream() << json << std::endl;
+  [self log:__FILE__ line:__LINE__ severity:severity message:message];
 }
 
-- (std::unique_ptr<ads::LogStream>)log:(const char *)file line:(const int)line logLevel:(const ads::LogLevel)log_level
+- (void)verboseLog:(const char *)file line:(const int)line verboseLevel:(const int)verbose_level message:(const std::string &) message
 {
-  return std::make_unique<RewardsLogStream>(file, line, log_level);
+  [self verboseLog:__FILE__ line:__LINE__ verboseLevel:verbose_level message:message];
 }
 
 #pragma mark - Notifications

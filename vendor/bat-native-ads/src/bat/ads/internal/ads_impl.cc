@@ -115,12 +115,12 @@ AdNotifications* AdsImpl::get_ad_notifications() const {
 
 void AdsImpl::Initialize(
     InitializeCallback callback) {
-  BLOG(INFO) << "Initializing ads";
+  VLOG(2, "Initializing ads");
 
   initialize_callback_ = callback;
 
   if (IsInitialized()) {
-    BLOG(INFO) << "Already initialized ads";
+    VLOG(2, "Already initialized ads");
 
     initialize_callback_(FAILED);
     return;
@@ -176,7 +176,7 @@ void AdsImpl::InitializeStep5(
 
   is_initialized_ = true;
 
-  BLOG(INFO) << "Successfully initialized ads";
+  VLOG(2, "Successfully initialized ads");
 
   is_foreground_ = ads_client_->IsForeground();
 
@@ -250,7 +250,7 @@ bool AdsImpl::IsInitialized() {
 void AdsImpl::Shutdown(
     ShutdownCallback callback) {
   if (!is_initialized_) {
-    BLOG(WARNING) << "Shutdown failed as not initialized";
+    VLOG(1, "Shutdown failed as not initialized");
 
     callback(FAILED);
     return;
@@ -274,12 +274,11 @@ void AdsImpl::OnUserModelLoaded(
   auto language = client_->GetUserModelLanguage();
 
   if (result != SUCCESS) {
-    BLOG(ERROR) << "Failed to load user model for " << language << " language";
+    LOG(ERROR, "Failed to load user model for " << language << " language");
     return;
   }
 
-  BLOG(INFO) << "Successfully loaded user model for " << language
-      << " language";
+  VLOG(4, "Successfully loaded user model for " << language << " language");
 
   InitializeUserModel(json, language);
 
@@ -293,12 +292,12 @@ void AdsImpl::InitializeUserModel(
     const std::string& language) {
   // TODO(Terry Mancey): Refactor function to use callbacks
 
-  BLOG(INFO) << "Initializing user model for " << language << " language";
+  VLOG(2, "Initializing user model for " << language << " language");
 
   user_model_.reset(usermodel::UserModel::CreateInstance());
   user_model_->InitializePageClassifier(json);
 
-  BLOG(INFO) << "Initialized user model for " << language << " language";
+  VLOG(2, "Initialized user model for " << language << " language");
 }
 
 bool AdsImpl::IsMobile() const {
@@ -323,7 +322,7 @@ void AdsImpl::OnForeground() {
 
   const Reports reports(this);
   const std::string report = reports.GenerateForegroundEventReport();
-  ads_client_->EventLog(report);
+  VLOG(2, report);
 
   if (IsMobile() && !ads_client_->CanShowBackgroundNotifications()) {
     StartDeliveringAdNotifications();
@@ -335,7 +334,7 @@ void AdsImpl::OnBackground() {
 
   const Reports reports(this);
   const std::string report = reports.GenerateBackgroundEventReport();
-  ads_client_->EventLog(report);
+  VLOG(2, report);
 
   if (IsMobile() && !ads_client_->CanShowBackgroundNotifications()) {
     deliver_ad_notification_timer_.Stop();
@@ -347,16 +346,16 @@ bool AdsImpl::IsForeground() const {
 }
 
 void AdsImpl::OnIdle() {
-  BLOG(INFO) << "Browser state changed to idle";
+  VLOG(2, "Browser state changed to idle");
 }
 
 void AdsImpl::OnUnIdle() {
   if (!IsInitialized()) {
-    BLOG(WARNING) << "OnUnIdle failed as not initialized";
+    VLOG(1, "OnUnIdle failed as not initialized");
     return;
   }
 
-  BLOG(INFO) << "Browser state changed to unidle";
+  VLOG(2, "Browser state changed to unidle");
 
   if (IsMobile()) {
     return;
@@ -373,7 +372,7 @@ void AdsImpl::OnMediaPlaying(
     return;
   }
 
-  BLOG(INFO) << "OnMediaPlaying for tab id: " << tab_id;
+  VLOG(3, "Started playing media for tab id " << tab_id);
 
   media_playing_.insert(tab_id);
 }
@@ -386,7 +385,7 @@ void AdsImpl::OnMediaStopped(
     return;
   }
 
-  BLOG(INFO) << "OnMediaStopped for tab id: " << tab_id;
+  VLOG(3, "Stopped playing media for tab id " << tab_id);
 
   media_playing_.erase(iter);
 }
@@ -408,8 +407,8 @@ void AdsImpl::OnAdNotificationEvent(
 
   AdNotificationInfo info;
   if (!ad_notifications_->Get(uuid, &info)) {
-    BLOG(ERROR) << "Failed to trigger ad event as ad notification was not "
-        "found for uuid " << uuid;
+    LOG(ERROR, "Failed to trigger ad event as ad notification was not "
+        "found for uuid " << uuid);
 
     return;
   }
@@ -460,7 +459,7 @@ void AdsImpl::OnTabUpdated(
   }
 
   if (is_active) {
-    BLOG(INFO) << "OnTabUpdated.IsFocused for tab id: " << tab_id;
+    VLOG(3, "Tab id " << tab_id << " is active");
 
     active_tab_id_ = tab_id;
     previous_tab_url_ = active_tab_url_;
@@ -470,21 +469,21 @@ void AdsImpl::OnTabUpdated(
     FocusInfo focus_info;
     focus_info.tab_id = tab_id;
     const std::string report = reports.GenerateFocusEventReport(focus_info);
-    ads_client_->EventLog(report);
+    VLOG(2, report);
   } else {
-    BLOG(INFO) << "OnTabUpdated.IsBlurred for tab id: " << tab_id;
+    VLOG(4, "Tab id " << tab_id << " is inactive");
 
     const Reports reports(this);
     BlurInfo blur_info;
     blur_info.tab_id = tab_id;
     const std::string report = reports.GenerateBlurEventReport(blur_info);
-    ads_client_->EventLog(report);
+    VLOG(2, report);
   }
 }
 
 void AdsImpl::OnTabClosed(
     const int32_t tab_id) {
-  BLOG(INFO) << "OnTabClosed for tab id: " << tab_id;
+  VLOG(3, "Closed tab id " << tab_id);
 
   OnMediaStopped(tab_id);
 
@@ -492,7 +491,7 @@ void AdsImpl::OnTabClosed(
   DestroyInfo destroy_info;
   destroy_info.tab_id = tab_id;
   const std::string report = reports.GenerateDestroyEventReport(destroy_info);
-  ads_client_->EventLog(report);
+  VLOG(2, report);
 }
 
 void AdsImpl::RemoveAllHistory(
@@ -609,15 +608,15 @@ void AdsImpl::ChangeLocale(
   const std::vector<std::string> languages = client_->GetUserModelLanguages();
   if (std::find(languages.begin(), languages.end(), language_code)
       == languages.end()) {
-    BLOG(INFO) << language_code << " user model not supported for page "
-        "classification";
+    VLOG(2, language_code << " user model not supported for page "
+        "classification");
 
     InitializeStep5(SUCCESS);
     return;
   }
 
-  BLOG(INFO) << "Changed to " << language_code << " user model for page "
-      "classification";
+  VLOG(2, "Changed to " << language_code << " user model for page "
+      "classification");
 
   LoadUserModel();
 }
@@ -628,12 +627,7 @@ void AdsImpl::OnPageLoaded(
   DCHECK(!url.empty());
 
   if (!IsInitialized()) {
-    BLOG(WARNING) << "OnPageLoaded failed as not initialized";
-    return;
-  }
-
-  if (url.empty()) {
-    BLOG(INFO) << "Empty URL is not supported";
+    VLOG(1, "Failed to classify page as not initialized");
     return;
   }
 
@@ -646,7 +640,7 @@ void AdsImpl::OnPageLoaded(
   ExtractPurchaseIntentSignal(url);
 
   if (SameSite(url, last_shown_ad_notification_.target_url)) {
-    BLOG(INFO) << "Visited URL matches the last shown ad notification";
+    VLOG(2, "Visited URL matches the last shown ad notification");
 
     if (last_sustained_ad_notification_.creative_instance_id !=
         last_shown_ad_notification_.creative_instance_id) {
@@ -659,11 +653,11 @@ void AdsImpl::OnPageLoaded(
       StartSustainingAdNotificationInteraction();
     } else {
       if (sustain_ad_notification_interaction_timer_.IsRunning()) {
-        BLOG(INFO) << "Already sustaining ad notification interaction for "
-            "visited URL";
+        VLOG(2, "Already sustaining ad notification interaction for "
+            "visited URL");
       } else {
-        BLOG(INFO) << "Already sustained ad notification interaction for "
-            "visited URL";
+        VLOG(2, "Already sustained ad notification interaction for "
+            "visited URL");
       }
     }
 
@@ -671,16 +665,16 @@ void AdsImpl::OnPageLoaded(
   }
 
   if (!last_shown_ad_notification_.target_url.empty()) {
-    BLOG(INFO) << "Visited URL does not match the last shown ad notification";
+    VLOG(2, "Visited URL does not match the last shown ad notification");
   }
 
   if (!is_supported_url) {
-    BLOG(INFO) << "Visited URL is not supported";
+    VLOG(2, "Unable to classify page as visited URL is not supported");
     return;
   }
 
   if (SearchProviders::IsSearchEngine(url)) {
-    BLOG(INFO) << "Visited URL is a search engine";
+    VLOG(2, "Unable to classify page as visited URL is a search engine");
     return;
   }
 
@@ -707,7 +701,7 @@ void AdsImpl::ExtractPurchaseIntentSignal(
   }
 
   GeneratePurchaseIntentSignalHistoryEntry(purchase_intent_signal);
-  BLOG(INFO) << "Extracting purchase intent signal from visited URL";
+  VLOG(2, "Extracting purchase intent signal from visited URL");
 }
 
 void AdsImpl::GeneratePurchaseIntentSignalHistoryEntry(
@@ -735,7 +729,7 @@ void AdsImpl::MaybeClassifyPage(
 
   const Reports reports(this);
   const std::string report = reports.GenerateLoadEventReport(load_info);
-  ads_client_->EventLog(report);
+  VLOG(2, report);
 }
 
 bool AdsImpl::ShouldClassifyPagesIfTargeted() const {
@@ -759,7 +753,7 @@ std::string AdsImpl::ClassifyPage(
 
   auto winning_category = GetWinningCategory(page_score);
   if (winning_category.empty()) {
-    BLOG(INFO) << "Failed to classify page as not enough content";
+    VLOG(1, "Failed to classify page as not enough content");
     return "";
   }
 
@@ -769,8 +763,8 @@ std::string AdsImpl::ClassifyPage(
 
   const auto winning_categories = GetWinningCategories();
 
-  BLOG(INFO) << "Successfully classified page as " << winning_category
-      << ". Winning category over time is " << winning_categories.front();
+  VLOG(2, "Successfully classified page as " << winning_category
+      << ". Winning category over time is " << winning_categories.front());
 
   return winning_category;
 }
@@ -800,8 +794,8 @@ WinningCategoryList AdsImpl::GetWinningCategories() {
     for (size_t i = 0; i < page_score.size(); i++) {
       auto taxonomy = user_model_->GetTaxonomyAtIndex(i);
       if (client_->IsFilteredCategory(taxonomy)) {
-        BLOG(INFO) << taxonomy << " taxonomy has been excluded from the winner "
-            "over time";
+        VLOG(2, taxonomy << " taxonomy has been excluded from the winner "
+            "over time");
 
         continue;
       }
@@ -946,14 +940,14 @@ void AdsImpl::ServeAdNotificationFromCategories(
   }
 
   if (categories.empty()) {
-    BLOG(INFO) << "No categories";
+    VLOG(2, "No categories to serve targeted ads");
     ServeUntargetedAdNotification();
     return;
   }
 
-  BLOG(INFO) << "Serving ad from categories:";
+  VLOG(2, "Serving ad from categories:");
   for (const auto& category : categories) {
-    BLOG(INFO) << "  " << category;
+    VLOG(2, "  " << category);
   }
 
   auto callback = std::bind(&AdsImpl::OnServeAdNotificationFromCategories,
@@ -971,9 +965,9 @@ void AdsImpl::OnServeAdNotificationFromCategories(
     return;
   }
 
-  BLOG(INFO) << "No eligible ads found in categories:";
+  VLOG(2, "No eligible ads found in categories:");
   for (const auto& category : categories) {
-    BLOG(INFO) << "  " << category;
+    VLOG(2, "  " << category);
   }
 
   // TODO(https://github.com/brave/brave-browser/issues/8486): Brave Ads
@@ -1004,9 +998,9 @@ bool AdsImpl::ServeAdNotificationFromParentCategories(
     parent_categories.push_back(parent_category);
   }
 
-  BLOG(INFO) << "Serving ad from parent categories:";
+  VLOG(2, "Serving ad from parent categories:");
   for (const auto& parent_category : parent_categories) {
-    BLOG(INFO) << "  " << parent_category;
+    VLOG(2, "  " << parent_category);
   }
 
   auto callback = std::bind(&AdsImpl::OnServeAdNotificationFromCategories,
@@ -1017,7 +1011,7 @@ bool AdsImpl::ServeAdNotificationFromParentCategories(
 }
 
 void AdsImpl::ServeUntargetedAdNotification() {
-  BLOG(INFO) << "Serving ad notification from untargeted category";
+  VLOG(2, "Serving ad notification from untargeted category");
 
   std::vector<std::string> categories = {
     kUntargetedPageClassification
@@ -1059,7 +1053,7 @@ void AdsImpl::OnServeAdNotification(
     return;
   }
 
-  BLOG(INFO) << "Found " << eligible_ads.size() << " eligible ads";
+  VLOG(2, "Found " << eligible_ads.size() << " eligible ads");
 
   const int rand = base::RandInt(0, eligible_ads.size() - 1);
   const CreativeAdNotificationInfo ad = eligible_ads.at(rand);
@@ -1077,7 +1071,7 @@ void AdsImpl::SuccessfullyServedAd() {
 
 void AdsImpl::FailedToServeAdNotification(
     const std::string& reason) {
-  BLOG(INFO) << "Notification not made: " << reason;
+  VLOG(2, "Notification not made: " << reason);
 
   if (IsMobile()) {
     StartDeliveringAdNotificationsAfterSeconds(
@@ -1127,7 +1121,7 @@ CreativeAdNotificationList AdsImpl::GetEligibleAds(
         continue;
       }
 
-      BLOG(INFO) << exclusion_rule->GetLastMessage();
+      VLOG(2, exclusion_rule->GetLastMessage());
       should_exclude = true;
     }
 
@@ -1136,15 +1130,15 @@ CreativeAdNotificationList AdsImpl::GetEligibleAds(
     }
 
     if (client_->IsFilteredAd(ad.creative_set_id)) {
-      BLOG(WARNING) << "creativeSetId " << ad.creative_set_id << " excluded "
-          "due to being marked to no longer receive ads";
+      VLOG(2, "creativeSetId " << ad.creative_set_id << " excluded "
+          "due to being marked to no longer receive ads");
 
       continue;
     }
 
     if (client_->IsFlaggedAd(ad.creative_set_id)) {
-      BLOG(WARNING) << "creativeSetId " << ad.creative_set_id << " excluded "
-          "due to being marked as inappropriate";
+      VLOG(2, "creativeSetId " << ad.creative_set_id << " excluded "
+          "due to being marked as inappropriate");
 
       continue;
     }
@@ -1185,7 +1179,7 @@ CreativeAdNotificationList AdsImpl::GetUnseenAdsAndRoundRobinIfNeeded(
   CreativeAdNotificationList ads_for_unseen_advertisers =
       GetAdsForUnseenAdvertisers(ads);
   if (ads_for_unseen_advertisers.empty()) {
-    BLOG(INFO) << "All advertisers have been shown, so round robin";
+    VLOG(2, "All advertisers have been shown, so round robin");
 
     const bool should_not_show_last_advertiser =
         client_->GetSeenAdvertisers().size() > 1 ? true : false;
@@ -1209,7 +1203,7 @@ CreativeAdNotificationList AdsImpl::GetUnseenAdsAndRoundRobinIfNeeded(
   CreativeAdNotificationList unseen_ads =
       GetUnseenAds(ads_for_unseen_advertisers);
   if (unseen_ads.empty()) {
-    BLOG(INFO) << "All ads have been shown, so round robin";
+    VLOG(2, "All ads have been shown, so round robin");
 
     const bool should_not_show_last_ad =
         client_->GetSeenAdNotifications().size() > 1 ? true : false;
@@ -1265,18 +1259,18 @@ CreativeAdNotificationList AdsImpl::GetAdsForUnseenAdvertisers(
   return unseen_ads;
 }
 
-bool AdsImpl::IsAdNotificationValid(
+bool AdsImpl::IsAdNotificationValid(  // TODO(tmancey)
     const CreativeAdNotificationInfo& info) {
   if (info.title.empty() ||
       info.body.empty() ||
       info.target_url.empty()) {
-    BLOG(INFO) << "Ad notification not made: Incomplete ad information"
-        << std::endl << "  creativeInstanceId: " << info.creative_instance_id
-        << std::endl << "  creativeSetId: " << info.creative_set_id
-        << std::endl << "  campaignId: " << info.campaign_id
-        << std::endl << "  title: " << info.title
-        << std::endl << "  body: " << info.body
-        << std::endl << "  targetUrl: " << info.target_url;
+    VLOG(2, "Notification not made: Incomplete ad information\n"
+        << "  creativeInstanceId: " << info.creative_instance_id << "\n"
+        << "  creativeSetId: " << info.creative_set_id << "\n"
+        << "  campaignId: " << info.campaign_id << "\n"
+        << "  title: " << info.title << "\n"
+        << "  body: " << info.body << "\n"
+        << "  targetUrl: " << info.target_url);
 
     return false;
   }
@@ -1313,16 +1307,16 @@ bool AdsImpl::ShowAdNotification(
   ad_notification->target_url = GetUrlWithScheme(info.target_url);
   ad_notification->geo_target = info.geo_targets.at(0);
 
-  BLOG(INFO) << "Ad notification shown:"
-      << std::endl << "  uuid: " << ad_notification->uuid
-      << std::endl << "  parentUuid: " << ad_notification->parent_uuid
-      << std::endl << "  creativeInstanceId: "
-          << ad_notification->creative_instance_id
-      << std::endl << "  creativeSetId: " << ad_notification->creative_set_id
-      << std::endl << "  category: " << ad_notification->category
-      << std::endl << "  title: " << ad_notification->title
-      << std::endl << "  body: " << ad_notification->body
-      << std::endl << "  targetUrl: " << ad_notification->target_url;
+  VLOG(2, "Ad notification shown:\n"
+      << "  uuid: " << ad_notification->uuid << "\n"
+      << "  parentUuid: " << ad_notification->parent_uuid << "\n"
+      << "  creativeInstanceId: "
+          << ad_notification->creative_instance_id << "\n"
+      << "  creativeSetId: " << ad_notification->creative_set_id << "\n"
+      << "  category: " << ad_notification->category << "\n"
+      << "  title: " << ad_notification->title << "\n"
+      << "  body: " << ad_notification->body << "\n"
+      << "  targetUrl: " << ad_notification->target_url);
 
   ad_notifications_->PushBack(*ad_notification);
 
@@ -1366,7 +1360,7 @@ bool AdsImpl::IsAllowedToServeAdNotifications() {
       continue;
     }
 
-    BLOG(INFO) << permission_rule->GetLastMessage();
+    VLOG(2, permission_rule->GetLastMessage());
     is_allowed = false;
   }
 
@@ -1389,7 +1383,7 @@ void AdsImpl::StartDeliveringAdNotifications() {
   const base::Time time = deliver_ad_notification_timer_.Start(delay,
       base::BindOnce(&AdsImpl::DeliverAdNotification, base::Unretained(this)));
 
-  BLOG(INFO) << "Deliver ad notification " << FriendlyDateAndTime(time);
+  VLOG(2, "Deliver ad notification " << FriendlyDateAndTime(time));
 }
 
 void AdsImpl::StartDeliveringAdNotificationsAfterSeconds(
@@ -1433,7 +1427,7 @@ void AdsImpl::MaybeServeAdNotification(
   if (!should_serve || ok != previous) {
     const Reports reports(this);
     const std::string report = reports.GenerateSettingsEventReport();
-    ads_client_->EventLog(report);
+    VLOG(2, report);
   }
 
   if (!should_serve) {
@@ -1474,20 +1468,20 @@ void AdsImpl::StartSustainingAdNotificationInteraction() {
       delay, base::BindOnce(&AdsImpl::SustainAdNotificationInteractionIfNeeded,
           base::Unretained(this)));
 
-  BLOG(INFO) << "Sustain ad notification interaction "
-      << FriendlyDateAndTime(time);
+  VLOG(2, "Sustain ad notification interaction "
+      << FriendlyDateAndTime(time));
 }
 
 void AdsImpl::SustainAdNotificationInteractionIfNeeded() {
   if (!IsStillViewingAdNotification()) {
-    BLOG(INFO) << "Failed to sustain ad notification interaction. The domain "
+    VLOG(2, "Failed to sustain ad notification interaction. The domain "
         "for the focused tab does not match the last shown ad notification for "
-            << last_shown_ad_notification_.target_url;
+            << last_shown_ad_notification_.target_url);
 
     return;
   }
 
-  BLOG(INFO) << "Sustained ad notification interaction";
+  VLOG(2, "Sustained ad notification interaction");
 
   ConfirmAd(last_shown_ad_notification_, ConfirmationType::kLanded);
 }
@@ -1502,7 +1496,7 @@ void AdsImpl::ConfirmAd(
   const Reports reports(this);
   const std::string report = reports.GenerateConfirmationEventReport(
       info.creative_instance_id, confirmation_type);
-  ads_client_->EventLog(report);
+  VLOG(2, report);
 
   ads_client_->ConfirmAd(info, confirmation_type);
 }
@@ -1514,7 +1508,7 @@ void AdsImpl::ConfirmAction(
   const Reports reports(this);
   const std::string report = reports.GenerateConfirmationEventReport(
       creative_instance_id, confirmation_type);
-  ads_client_->EventLog(report);
+  VLOG(2, report);
 
   ads_client_->ConfirmAction(creative_instance_id, creative_set_id,
       confirmation_type);
